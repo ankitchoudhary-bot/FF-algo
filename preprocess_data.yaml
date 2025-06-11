@@ -44,18 +44,10 @@ implementation:
         y_train = np.load(args.y_train).astype(int)
         y_test = np.load(args.y_test).astype(int)
 
-        import json
-
-        # Convert numpy arrays to lists, then to JSON strings
-        x_train_norm = json.dumps(x_train.tolist())
-        x_test_norm = json.dumps(x_test.tolist())
-        y_train_int = json.dumps(y_train.tolist())
-        y_test_int = json.dumps(y_test.tolist())
-
-        # np.save(args.x_train_norm, x_train)
-        # np.save(args.x_test_norm, x_test)
-        # np.save(args.y_train_int, y_train)
-        # np.save(args.y_test_int, y_test)
+        np.save(args.x_train_norm, x_train)
+        np.save(args.x_test_norm, x_test)
+        np.save(args.y_train_int, y_train)
+        np.save(args.y_test_int, y_test)
     args:
       - --x_train
       - {inputPath: x_train}
