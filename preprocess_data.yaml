@@ -1,16 +1,19 @@
 name: Preprocess MNIST Dataset
-description: Normalizes images and casts labels for training and testing sets.
+description: Normalizes MNIST images and casts labels; prepares TF datasets.
 
 inputs:
   - {name: x_train, type: Dataset}
   - {name: y_train, type: Dataset}
   - {name: x_test, type: Dataset}
   - {name: y_test, type: Dataset}
+
 outputs:
-  - {name: x_train_norm, type: Dataset}
-  - {name: x_test_norm, type: Dataset}
-  - {name: y_train_int, type: Dataset}
-  - {name: y_test_int, type: Dataset}
+  - {name: x_train, type: Dataset}
+  - {name: x_test, type: Dataset}
+  - {name: y_train, type: Dataset}
+  - {name: y_test, type: Dataset}
+  - {name: train_dataset, type: Dataset}
+  - {name: test_dataset, type: Dataset}
 
 implementation:
   container:
@@ -19,13 +22,11 @@ implementation:
       - sh
       - -c
       - |
-        python3 -m pip install --quiet numpy
-        exec "$0" "$@"
-      - python3
-      - -u
-      - -c
+        python3 -m pip install --quiet numpy tensorflow
+        exec python3 -u - "$@"
       - |
         import numpy as np
+        import tensorflow as tf
         import argparse
 
         parser = argparse.ArgumentParser()
@@ -33,21 +34,33 @@ implementation:
         parser.add_argument('--y_train', required=True)
         parser.add_argument('--x_test', required=True)
         parser.add_argument('--y_test', required=True)
-        parser.add_argument('--x_train_norm', required=True)
-        parser.add_argument('--x_test_norm', required=True)
-        parser.add_argument('--y_train_int', required=True)
-        parser.add_argument('--y_test_int', required=True)
+        parser.add_argument('--x_train_out', required=True)
+        parser.add_argument('--x_test_out', required=True)
+        parser.add_argument('--y_train_out', required=True)
+        parser.add_argument('--y_test_out', required=True)
+        parser.add_argument('--train_dataset', required=True)
+        parser.add_argument('--test_dataset', required=True)
         args = parser.parse_args()
 
-        x_train = np.load(args.x_train).astype(float) / 255
-        x_test = np.load(args.x_test).astype(float) / 255
-        y_train = np.load(args.y_train).astype(int)
-        y_test = np.load(args.y_test).astype(int)
+        x_train = np.load(args.x_train).astype(np.float32) / 255.0
+        x_test = np.load(args.x_test).astype(np.float32) / 255.0
+        y_train = np.load(args.y_train).astype(np.int32)
+        y_test = np.load(args.y_test).astype(np.int32)
 
-        np.save(args.x_train_norm, x_train)
-        np.save(args.x_test_norm, x_test)
-        np.save(args.y_train_int, y_train)
-        np.save(args.y_test_int, y_test)
+        # Save preprocessed arrays
+        np.save(args.x_train_out, x_train)
+        np.save(args.x_test_out, x_test)
+        np.save(args.y_train_out, y_train)
+        np.save(args.y_test_out, y_test)
+
+        # Convert to TensorFlow datasets
+        train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(60000)
+        test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(10000)
+
+        # Save datasets as .npz (TF dataset can't be saved directly; this is a common workaround)
+        tf.data.experimental.save(train_dataset, args.train_dataset)
+        tf.data.experimental.save(test_dataset, args.test_dataset)
+
     args:
       - --x_train
       - {inputPath: x_train}
@@ -57,11 +70,15 @@ implementation:
       - {inputPath: x_test}
       - --y_test
       - {inputPath: y_test}
-      - --x_train_norm
-      - {outputPath: x_train_norm}
-      - --x_test_norm
-      - {outputPath: x_test_norm}
-      - --y_train_int
-      - {outputPath: y_train_int}
-      - --y_test_int
-      - {outputPath: y_test_int}
+      - --x_train_out
+      - {outputPath: x_train}
+      - --x_test_out
+      - {outputPath: x_test}
+      - --y_train_out
+      - {outputPath: y_train}
+      - --y_test_out
+      - {outputPath: y_test}
+      - --train_dataset
+      - {outputPath: train_dataset}
+      - --test_dataset
+      - {outputPath: test_dataset}
