@@ -62,7 +62,7 @@ implementation:
         predictions = preds.reshape(preds, (preds.shape[0], preds.shape[1]))
 
         # Accuracy
-        accuracy = accuracy_score(preds, y_test)
+        accuracy = accuracy_score(predictions, y_test)
 
         # Save accuracy
         os.makedirs(os.path.dirname(args.accuracy), exist_ok=True)
