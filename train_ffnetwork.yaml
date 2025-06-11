@@ -10,8 +10,8 @@ implementation:
       - sh
       - -c
       - |
-        PIP_DISABLE_PIP_VERSION_CHECK=1 pip install --quiet tensorflow &&
-        python3 -c "
+        (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet tensorflow || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet tensorflow --user) && "$0" "$@"
+        python3 -u -c "
 
 import tensorflow as tf
 from tensorflow import keras
@@ -170,3 +170,4 @@ model = FFNetwork(dims=[784, 500, 500])
 # Save model to disk (output/model)
 model.save('model/ff_model.keras')
 "
+    args=[]
