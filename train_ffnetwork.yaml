@@ -1,226 +1,178 @@
-# name: Train FF Network model
-# description: Trains a Feedforward Network using Forward-Forward algorithm and outputs the trained model.
-
-# outputs:
-#   - {name: model, type: Model}
-# implementation:
-#   container:
-#     image: python:3.9
-#     command:
-#       - sh
-#       - -c
-#       - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet tensorflow || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet tensorflow --user) && "$0" "$@"
-#       - python3
-#       - -u 
-#       - -c
-#       - |
-
-#         # import tensorflow as tf
-#         # from tensorflow import keras
-#         # from keras import ops
-#         # from tensorflow.compiler.tf2xla.python import xla
-
-#         # class FFDense(keras.layers.Layer):
-
-#         #     def __init__(
-#         #         self,
-#         #         units,
-#         #         init_optimizer,
-#         #         loss_metric,
-#         #         num_epochs=50,
-#         #         use_bias=True,
-#         #         kernel_initializer="glorot_uniform",
-#         #         bias_initializer="zeros",
-#         #         kernel_regularizer=None,
-#         #         bias_regularizer=None,
-#         #         **kwargs,
-#         #     ):
-#         #         super().__init__(**kwargs)
-#         #         self.dense = keras.layers.Dense(
-#         #             units=units,
-#         #             use_bias=use_bias,
-#         #             kernel_initializer=kernel_initializer,
-#         #             bias_initializer=bias_initializer,
-#         #             kernel_regularizer=kernel_regularizer,
-#         #             bias_regularizer=bias_regularizer,
-#         #         )
-#         #         self.relu = keras.layers.ReLU()
-#         #         self.optimizer = init_optimizer()
-#         #         self.loss_metric = loss_metric
-#         #         self.threshold = 1.5
-#         #         self.num_epochs = num_epochs
-
-#         #     def call(self, x):
-#         #         x_norm = ops.norm(x, ord=2, axis=1, keepdims=True)
-#         #         x_norm = x_norm + 1e-4
-#         #         x_dir = x / x_norm
-#         #         res = self.dense(x_dir)
-#         #         return self.relu(res)
-
-#         #     def forward_forward(self, x_pos, x_neg):
-#         #         for i in range(self.num_epochs):
-#         #             with tf.GradientTape() as tape:
-#         #                 g_pos = ops.mean(ops.power(self.call(x_pos), 2), 1)
-#         #                 g_neg = ops.mean(ops.power(self.call(x_neg), 2), 1)
-
-#         #                 loss = ops.log(
-#         #                     1
-#         #                     + ops.exp(
-#         #                         ops.concatenate(
-#         #                             [-g_pos + self.threshold, g_neg - self.threshold], 0
-#         #                         )
-#         #                     )
-#         #                 )
-#         #                 mean_loss = ops.cast(ops.mean(loss), dtype="float32")
-#         #                 self.loss_metric.update_state([mean_loss])
-#         #             gradients = tape.gradient(mean_loss, self.dense.trainable_weights)
-#         #             self.optimizer.apply_gradients(zip(gradients, self.dense.trainable_weights))
-#         #         return (
-#         #             ops.stop_gradient(self.call(x_pos)),
-#         #             ops.stop_gradient(self.call(x_neg)),
-#         #             self.loss_metric.result(),
-#         #         )
-#         # class FFNetwork(keras.Model):
-
-#         #     def __init__(
-#         #         self,
-#         #         dims,
-#         #         init_layer_optimizer=lambda: keras.optimizers.Adam(learning_rate=0.03),
-#         #         **kwargs,
-#         #     ):
-#         #         super().__init__(**kwargs)
-#         #         self.init_layer_optimizer = init_layer_optimizer
-#         #         self.loss_var = keras.Variable(0.0, trainable=False, dtype="float32")
-#         #         self.loss_count = keras.Variable(0.0, trainable=False, dtype="float32")
-#         #         self.layer_list = [keras.Input(shape=(dims[0],))]
-#         #         self.metrics_built = False
-#         #         for d in range(len(dims) - 1):
-#         #             self.layer_list += [
-#         #                 FFDense(
-#         #                     dims[d + 1],
-#         #                     init_optimizer=self.init_layer_optimizer,
-#         #                     loss_metric=keras.metrics.Mean(),
-#         #                 )
-#         #             ]
-
-#         #     @tf.function(reduce_retracing=True)
-#         #     def overlay_y_on_x(self, data):
-#         #         X_sample, y_sample = data
-#         #         max_sample = ops.amax(X_sample, axis=0, keepdims=True)
-#         #         max_sample = ops.cast(max_sample, dtype="float64")
-#         #         X_zeros = ops.zeros([10], dtype="float64")
-#         #         X_update = xla.dynamic_update_slice(X_zeros, max_sample, [y_sample])
-#         #         X_sample = xla.dynamic_update_slice(X_sample, X_update, [0])
-#         #         return X_sample, y_sample
-
-#         #     @tf.function(reduce_retracing=True)
-#         #     def predict_one_sample(self, x):
-#         #         goodness_per_label = []
-#         #         x = ops.reshape(x, [ops.shape(x)[0] * ops.shape(x)[1]])
-#         #         for label in range(10):
-#         #             h, label = self.overlay_y_on_x(data=(x, label))
-#         #             h = ops.reshape(h, [-1, ops.shape(h)[0]])
-#         #             goodness = []
-#         #             for layer_idx in range(1, len(self.layer_list)):
-#         #                 layer = self.layer_list[layer_idx]
-#         #                 h = layer(h)
-#         #                 goodness += [ops.mean(ops.power(h, 2), 1)]
-#         #             goodness_per_label += [ops.expand_dims(ops.sum(goodness, keepdims=True), 1)]
-#         #         goodness_per_label = tf.concat(goodness_per_label, 1)
-#         #         return ops.cast(ops.argmax(goodness_per_label, 1), dtype="float64")
-
-#         #     def predict(self, data):
-#         #         x = data
-#         #         preds = list()
-#         #         preds = ops.vectorized_map(self.predict_one_sample, x)
-#         #         return np.asarray(preds, dtype=int)
-
-#         #     @tf.function(jit_compile=False)
-#         #     def train_step(self, data):
-#         #         x, y = data
-
-#         #         if not self.metrics_built:
-#         #             for metric in self.metrics:
-#         #                 if hasattr(metric, "build"):
-#         #                     metric.build(y, y)
-#         #             self.metrics_built = True
-
-#         #         x = ops.reshape(x, [-1, ops.shape(x)[1] * ops.shape(x)[2]])
-
-#         #         x_pos, y = ops.vectorized_map(self.overlay_y_on_x, (x, y))
-
-#         #         random_y = tf.random.shuffle(y)
-#         #         x_neg, y = tf.map_fn(self.overlay_y_on_x, (x, random_y))
-
-#         #         h_pos, h_neg = x_pos, x_neg
-
-#         #         for idx, layer in enumerate(self.layers):
-#         #             if isinstance(layer, FFDense):
-#         #                 print(f"Training layer {idx+1} now : ")
-#         #                 h_pos, h_neg, loss = layer.forward_forward(h_pos, h_neg)
-#         #                 self.loss_var.assign_add(loss)
-#         #                 self.loss_count.assign_add(1.0)
-#         #             else:
-#         #                 print(f"Passing layer {idx+1} now : ")
-#         #                 x = layer(x)
-#         #         mean_res = ops.divide(self.loss_var, self.loss_count)
-#         #         return {"FinalLoss": mean_res}
-
-
-#         # model = FFNetwork(dims=[784, 500, 500])
-
-#         # # Save model to disk (output/model)
-#         # model.save('model/ff_model.keras')
-#    args:
-#     - --model
-#     - {outputPath: model}
-
-
-name: Load MNIST Dataset
-description: Loads MNIST dataset and saves it to .npy files for downstream use.
+name: Train FF Network model
+description: Trains a Feedforward Network using Forward-Forward algorithm and outputs the trained model.
 
 inputs: []
 outputs:
-  - {name: x_train, type: Dataset}
-  - {name: y_train, type: Dataset}
-  - {name: x_test, type: Dataset}
-  - {name: y_test, type: Dataset}
+  - {name: model, type: Model}
 
 implementation:
   container:
-    image: python:3.8
+    image: python:3.9
     command:
       - sh
       - -c
       - |
-        python3 -m pip install --quiet tensorflow numpy
-        exec "$0" "$@"
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet tensorflow || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet tensorflow --user) && "$0" "$@"
       - python3
       - -u
       - -c
       - |
-        import numpy as np
+        import tensorflow as tf
         from tensorflow import keras
-        import argparse, os
+        from keras import ops
+        from tensorflow.compiler.tf2xla.python import xla
 
         parser = argparse.ArgumentParser()
-        parser.add_argument('--x_train', required=True)
-        parser.add_argument('--y_train', required=True)
-        parser.add_argument('--x_test', required=True)
-        parser.add_argument('--y_test', required=True)
+        parser.add_argument("--model", type=str, required=True)
         args = parser.parse_args()
 
-        (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
-        np.save(args.x_train, x_train)
-        np.save(args.y_train, y_train)
-        np.save(args.x_test, x_test)
-        np.save(args.y_test, y_test)
+        class FFDense(keras.layers.Layer):
+            def __init__(
+                self,
+                units,
+                init_optimizer,
+                loss_metric,
+                num_epochs=50,
+                use_bias=True,
+                kernel_initializer="glorot_uniform",
+                bias_initializer="zeros",
+                kernel_regularizer=None,
+                bias_regularizer=None,
+                **kwargs,
+            ):
+                super().__init__(**kwargs)
+                self.dense = keras.layers.Dense(
+                    units=units,
+                    use_bias=use_bias,
+                    kernel_initializer=kernel_initializer,
+                    bias_initializer=bias_initializer,
+                    kernel_regularizer=kernel_regularizer,
+                    bias_regularizer=bias_regularizer,
+                )
+                self.relu = keras.layers.ReLU()
+                self.optimizer = init_optimizer()
+                self.loss_metric = loss_metric
+                self.threshold = 1.5
+                self.num_epochs = num_epochs
+
+            def call(self, x):
+                x_norm = ops.norm(x, ord=2, axis=1, keepdims=True)
+                x_norm = x_norm + 1e-4
+                x_dir = x / x_norm
+                res = self.dense(x_dir)
+                return self.relu(res)
+
+            def forward_forward(self, x_pos, x_neg):
+                for i in range(self.num_epochs):
+                    with tf.GradientTape() as tape:
+                        g_pos = ops.mean(ops.power(self.call(x_pos), 2), 1)
+                        g_neg = ops.mean(ops.power(self.call(x_neg), 2), 1)
+
+                        loss = ops.log(
+                            1
+                            + ops.exp(
+                                ops.concatenate(
+                                    [-g_pos + self.threshold, g_neg - self.threshold], 0
+                                )
+                            )
+                        )
+                        mean_loss = ops.cast(ops.mean(loss), dtype="float32")
+                        self.loss_metric.update_state([mean_loss])
+                    gradients = tape.gradient(mean_loss, self.dense.trainable_weights)
+                    self.optimizer.apply_gradients(zip(gradients, self.dense.trainable_weights))
+                return (
+                    ops.stop_gradient(self.call(x_pos)),
+                    ops.stop_gradient(self.call(x_neg)),
+                    self.loss_metric.result(),
+                )
+        class FFNetwork(keras.Model):
+
+            def __init__(
+                self,
+                dims,
+                init_layer_optimizer=lambda: keras.optimizers.Adam(learning_rate=0.03),
+                **kwargs,
+            ):
+                super().__init__(**kwargs)
+                self.init_layer_optimizer = init_layer_optimizer
+                self.loss_var = keras.Variable(0.0, trainable=False, dtype="float32")
+                self.loss_count = keras.Variable(0.0, trainable=False, dtype="float32")
+                self.layer_list = [keras.Input(shape=(dims[0],))]
+                self.metrics_built = False
+                for d in range(len(dims) - 1):
+                    self.layer_list += [
+                        FFDense(
+                            dims[d + 1],
+                            init_optimizer=self.init_layer_optimizer,
+                            loss_metric=keras.metrics.Mean(),
+                        )
+                    ]
+
+            @tf.function(reduce_retracing=True)
+            def overlay_y_on_x(self, data):
+                X_sample, y_sample = data
+                max_sample = ops.amax(X_sample, axis=0, keepdims=True)
+                max_sample = ops.cast(max_sample, dtype="float64")
+                X_zeros = ops.zeros([10], dtype="float64")
+                X_update = xla.dynamic_update_slice(X_zeros, max_sample, [y_sample])
+                X_sample = xla.dynamic_update_slice(X_sample, X_update, [0])
+                return X_sample, y_sample
+
+            @tf.function(reduce_retracing=True)
+            def predict_one_sample(self, x):
+                goodness_per_label = []
+                x = ops.reshape(x, [ops.shape(x)[0] * ops.shape(x)[1]])
+                for label in range(10):
+                    h, label = self.overlay_y_on_x(data=(x, label))
+                    h = ops.reshape(h, [-1, ops.shape(h)[0]])
+                    goodness = []
+                    for layer_idx in range(1, len(self.layer_list)):
+                        layer = self.layer_list[layer_idx]
+                        h = layer(h)
+                        goodness += [ops.mean(ops.power(h, 2), 1)]
+                    goodness_per_label += [ops.expand_dims(ops.sum(goodness, keepdims=True), 1)]
+                goodness_per_label = tf.concat(goodness_per_label, 1)
+                return ops.cast(ops.argmax(goodness_per_label, 1), dtype="float64")
+
+            def predict(self, data):
+                x = data
+                preds = list()
+                preds = ops.vectorized_map(self.predict_one_sample, x)
+                return np.asarray(preds, dtype=int)
+
+            @tf.function(jit_compile=False)
+            def train_step(self, data):
+                x, y = data
+
+                if not self.metrics_built:
+                    for metric in self.metrics:
+                        if hasattr(metric, "build"):
+                            metric.build(y, y)
+                    self.metrics_built = True
+
+                x = ops.reshape(x, [-1, ops.shape(x)[1] * ops.shape(x)[2]])
+
+                x_pos, y = ops.vectorized_map(self.overlay_y_on_x, (x, y))
+
+                random_y = tf.random.shuffle(y)
+                x_neg, y = tf.map_fn(self.overlay_y_on_x, (x, random_y))
+
+                h_pos, h_neg = x_pos, x_neg
+
+                for idx, layer in enumerate(self.layers):
+                    if isinstance(layer, FFDense):
+                        print(f"Training layer {idx+1} now : ")
+                        h_pos, h_neg, loss = layer.forward_forward(h_pos, h_neg)
+                        self.loss_var.assign_add(loss)
+                        self.loss_count.assign_add(1.0)
+                    else:
+                        print(f"Passing layer {idx+1} now : ")
+                        x = layer(x)
+                mean_res = ops.divide(self.loss_var, self.loss_count)
+                return {"FinalLoss": mean_res}
+        
+        # Save model to disk (output/model)
+        model.save('model/ff_model.keras')
     args:
-      - --x_train
-      - {outputPath: x_train}
-      - --y_train
-      - {outputPath: y_train}
-      - --x_test
-      - {outputPath: x_test}
-      - --y_test
-      - {outputPath: y_test}
+      - --model
+      - {outputPath: model}
