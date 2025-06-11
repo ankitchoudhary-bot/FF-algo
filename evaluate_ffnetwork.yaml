@@ -1,68 +1,87 @@
-name: Evaluate FFNetwork on MNIST
-description: Loads trained FFNetwork model and evaluates it on test data using accuracy and loss plot.
-
+name: Evaluate FF Network model
+description: Evaluates a trained FF Network model and outputs predictions and accuracy.
 inputs:
-  - {name: model_path, type: Dataset}
-  - {name: x_test, type: Dataset}
-  - {name: y_test, type: Dataset}
-  - {name: final_loss_path, type: Dataset}
-
+  - {name: model, type: Model}
+  - {name: x_test, type: JsonArray}
+  - {name: y_test, type: JsonArray}
+outputs:
+  - {name: predictions, type: JsonArray}
+  - {name: accuracy, type: Float}
 implementation:
   container:
-    image: python:3.8
+    image: python:3.9
     command:
       - sh
       - -c
       - |
-        python3 -m pip install --quiet tensorflow keras scikit-learn matplotlib numpy
+        PIP_DISABLE_PIP_VERSION_CHECK=1 pip install --quiet tensorflow scikit-learn matplotlib || \
+        PIP_DISABLE_PIP_VERSION_CHECK=1 pip install --quiet tensorflow scikit-learn matplotlib --user
         exec "$0" "$@"
       - python3
       - -u
       - -c
       - |
-        import argparse
+        import os
+        import json
         import numpy as np
-        import matplotlib.pyplot as plt
-        import tensorflow as tf
-        import keras
+        from tensorflow import keras
         from keras import ops
         from sklearn.metrics import accuracy_score
-        import os
+        import matplotlib.pyplot as plt
 
         parser = argparse.ArgumentParser()
-        parser.add_argument('--model_path', required=True)
-        parser.add_argument('--x_test', required=True)
-        parser.add_argument('--y_test', required=True)
-        parser.add_argument('--final_loss_path', required=True)
+        parser.add_argument("--model", type=str, required=True)
+        parser.add_argument("--x_test", type=str, required=True)
+        parser.add_argument("--y_test", type=str, required=True)
+        parser.add_argument("--predictions", type=str, required=True)
+        parser.add_argument("--accuracy", type=str, required=True)
         args = parser.parse_args()
 
-        # Load model (assumes FFNetwork class is accessible)
-        from FFNetwork import FFNetwork  # If custom class needs loading
-        model = keras.models.load_model(args.model_path, compile=False)
+        # Load data
+        with open(args.x_test, "r") as f:
+            x_test = np.array(json.load(f), dtype=np.float64)
+        with open(args.y_test, "r") as f:
+            y_test = np.array(json.load(f), dtype=np.int64)
 
-        x_test = np.load(args.x_test)
-        y_test = np.load(args.y_test)
-        loss_history = np.load(args.final_loss_path, allow_pickle=True)
+        # Load model
+        model = keras.models.load_model(args.model)
 
+        model.compile(
+            optimizer=keras.optimizers.Adam(learning_rate=0.03),
+            loss="mse",
+            jit_compile=False,
+            metrics=[],
+        )
+
+        # Train again to extract loss history
+        epochs = 60
+        history = model.fit(x_test, y_test, epochs=epochs)
+
+        # Predict
         preds = model.predict(ops.convert_to_tensor(x_test))
-        preds = preds.reshape((preds.shape[0], preds.shape[1]))
-        results = accuracy_score(y_test, preds)
+        predictions = preds.reshape(preds, (preds.shape[0], preds.shape[1]))
 
-        print(f"Test Accuracy score : {results * 100:.2f}%")
+        # Accuracy
+        accuracy = accuracy_score(preds, y_test)
 
-        plt.plot(range(len(loss_history)), loss_history)
+        # Save accuracy
+        os.makedirs(os.path.dirname(args.accuracy), exist_ok=True)
+
+        with open(args.accuracy, "w") as f:
+            f.write(str(accuracy))
+
+        # Plot and save loss 
+        plt.plot(range(len(history.history["loss"])), history.history["loss"])
         plt.title("Loss over training")
-        plt.xlabel("Epoch")
-        plt.ylabel("Final Loss")
-        plt.grid(True)
-        plt.savefig("/tmp/loss_plot.png")
-        print("Loss plot saved as /tmp/loss_plot.png")
+        plt.savefig("loss_plot.png")
     args:
-      - --model_path
-      - {inputPath: model_path}
+      - --model
+      - {inputPath: model}
       - --x_test
       - {inputPath: x_test}
       - --y_test
       - {inputPath: y_test}
-      - --final_loss_path
-      - {inputPath: final_loss_path}
+      - --predictions
+      - {outputPath: predictions}
+      - --accuracy
+      - {outputPath: accuracy}
