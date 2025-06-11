@@ -1,0 +1,68 @@
+name: Evaluate FFNetwork on MNIST
+description: Loads trained FFNetwork model and evaluates it on test data using accuracy and loss plot.
+
+inputs:
+  - {name: model_path, type: Dataset}
+  - {name: x_test, type: Dataset}
+  - {name: y_test, type: Dataset}
+  - {name: final_loss_path, type: Dataset}
+
+implementation:
+  container:
+    image: python:3.8
+    command:
+      - sh
+      - -c
+      - |
+        python3 -m pip install --quiet tensorflow keras scikit-learn matplotlib numpy
+        exec "$0" "$@"
+      - python3
+      - -u
+      - -c
+      - |
+        import argparse
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import tensorflow as tf
+        import keras
+        from keras import ops
+        from sklearn.metrics import accuracy_score
+        import os
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--model_path', required=True)
+        parser.add_argument('--x_test', required=True)
+        parser.add_argument('--y_test', required=True)
+        parser.add_argument('--final_loss_path', required=True)
+        args = parser.parse_args()
+
+        # Load model (assumes FFNetwork class is accessible)
+        from FFNetwork import FFNetwork  # If custom class needs loading
+        model = keras.models.load_model(args.model_path, compile=False)
+
+        x_test = np.load(args.x_test)
+        y_test = np.load(args.y_test)
+        loss_history = np.load(args.final_loss_path, allow_pickle=True)
+
+        preds = model.predict(ops.convert_to_tensor(x_test))
+        preds = preds.reshape((preds.shape[0], preds.shape[1]))
+        results = accuracy_score(y_test, preds)
+
+        print(f"Test Accuracy score : {results * 100:.2f}%")
+
+        plt.plot(range(len(loss_history)), loss_history)
+        plt.title("Loss over training")
+        plt.xlabel("Epoch")
+        plt.ylabel("Final Loss")
+        plt.grid(True)
+        plt.savefig("/tmp/loss_plot.png")
+        print("Loss plot saved as /tmp/loss_plot.png")
+    args:
+      - --model_path
+      - {inputPath: model_path}
+      - --x_test
+      - {inputPath: x_test}
+      - --y_test
+      - {inputPath: y_test}
+      - --final_loss_path
+      - {inputPath: final_loss_path}

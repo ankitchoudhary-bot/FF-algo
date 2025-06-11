@@ -1,0 +1,67 @@
+name: Preprocess MNIST Dataset
+description: Normalizes images and casts labels for training and testing sets.
+
+inputs:
+  - {name: x_train, type: Dataset}
+  - {name: y_train, type: Dataset}
+  - {name: x_test, type: Dataset}
+  - {name: y_test, type: Dataset}
+outputs:
+  - {name: x_train_norm, type: Dataset}
+  - {name: x_test_norm, type: Dataset}
+  - {name: y_train_int, type: Dataset}
+  - {name: y_test_int, type: Dataset}
+
+implementation:
+  container:
+    image: python:3.8
+    command:
+      - sh
+      - -c
+      - |
+        python3 -m pip install --quiet numpy
+        exec "$0" "$@"
+      - python3
+      - -u
+      - -c
+      - |
+        import numpy as np
+        import argparse
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--x_train', required=True)
+        parser.add_argument('--y_train', required=True)
+        parser.add_argument('--x_test', required=True)
+        parser.add_argument('--y_test', required=True)
+        parser.add_argument('--x_train_norm', required=True)
+        parser.add_argument('--x_test_norm', required=True)
+        parser.add_argument('--y_train_int', required=True)
+        parser.add_argument('--y_test_int', required=True)
+        args = parser.parse_args()
+
+        x_train = np.load(args.x_train).astype(float) / 255
+        x_test = np.load(args.x_test).astype(float) / 255
+        y_train = np.load(args.y_train).astype(int)
+        y_test = np.load(args.y_test).astype(int)
+
+        np.save(args.x_train_norm, x_train)
+        np.save(args.x_test_norm, x_test)
+        np.save(args.y_train_int, y_train)
+        np.save(args.y_test_int, y_test)
+    args:
+      - --x_train
+      - {inputPath: x_train}
+      - --y_train
+      - {inputPath: y_train}
+      - --x_test
+      - {inputPath: x_test}
+      - --y_test
+      - {inputPath: y_test}
+      - --x_train_norm
+      - {outputPath: x_train_norm}
+      - --x_test_norm
+      - {outputPath: x_test_norm}
+      - --y_train_int
+      - {outputPath: y_train_int}
+      - --y_test_int
+      - {outputPath: y_test_int}

@@ -1,0 +1,54 @@
+name: Visualize Random MNIST Samples
+description: Plots 4 random MNIST training samples and saves the image.
+
+inputs:
+  - {name: x_train, type: Dataset}
+  - {name: y_train, type: Dataset}
+outputs:
+  - {name: sample_plot, type: Artifact}
+
+implementation:
+  container:
+    image: python:3.8
+    command:
+      - sh
+      - -c
+      - |
+        python3 -m pip install --quiet numpy matplotlib
+        exec "$0" "$@"
+      - python3
+      - -u
+      - -c
+      - |
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import argparse
+        import random
+        import os
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--x_train', required=True)
+        parser.add_argument('--y_train', required=True)
+        parser.add_argument('--sample_plot', required=True)
+        args = parser.parse_args()
+
+        x_train = np.load(args.x_train)
+        y_train = np.load(args.y_train)
+
+        idxs = random.sample(range(x_train.shape[0]), 4)
+        imgs = [(x_train[i], y_train[i]) for i in idxs]
+
+        plt.figure(figsize=(7, 7))
+        for idx, (img, label) in enumerate(imgs):
+            plt.subplot(2, 2, idx + 1)
+            plt.imshow(img, cmap="gray")
+            plt.title(f"Label : {label}")
+        os.makedirs(os.path.dirname(args.sample_plot), exist_ok=True)
+        plt.savefig(args.sample_plot)
+    args:
+      - --x_train
+      - {inputPath: x_train}
+      - --y_train
+      - {inputPath: y_train}
+      - --sample_plot
+      - {outputPath: sample_plot}

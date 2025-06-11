@@ -1,0 +1,48 @@
+name: Load MNIST Dataset
+description: Loads MNIST dataset and saves it to .npy files for downstream use.
+
+inputs: []
+outputs:
+  - {name: x_train, type: Dataset}
+  - {name: y_train, type: Dataset}
+  - {name: x_test, type: Dataset}
+  - {name: y_test, type: Dataset}
+
+implementation:
+  container:
+    image: python:3.8
+    command:
+      - sh
+      - -c
+      - |
+        python3 -m pip install --quiet tensorflow numpy
+        exec "$0" "$@"
+      - python3
+      - -u
+      - -c
+      - |
+        import numpy as np
+        from tensorflow import keras
+        import argparse, os
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--x_train', required=True)
+        parser.add_argument('--y_train', required=True)
+        parser.add_argument('--x_test', required=True)
+        parser.add_argument('--y_test', required=True)
+        args = parser.parse_args()
+
+        (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
+        np.save(args.x_train, x_train)
+        np.save(args.y_train, y_train)
+        np.save(args.x_test, x_test)
+        np.save(args.y_test, y_test)
+    args:
+      - --x_train
+      - {outputPath: x_train}
+      - --y_train
+      - {outputPath: y_train}
+      - --x_test
+      - {outputPath: x_test}
+      - --y_test
+      - {outputPath: y_test}
