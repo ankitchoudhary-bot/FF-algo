@@ -1,0 +1,60 @@
+name: Batch MNIST Dataset
+description: Converts preprocessed NumPy arrays into batched TF datasets.
+
+inputs:
+  - {name: x_train, type: Dataset}
+  - {name: y_train, type: Dataset}
+  - {name: x_test, type: Dataset}
+  - {name: y_test, type: Dataset}
+
+outputs:
+  - {name: train_dataset, type: Dataset}
+  - {name: test_dataset, type: Dataset}
+
+implementation:
+  container:
+    image: python:3.8
+    command:
+      - sh
+      - -c
+      - |
+        python3 -m pip install --quiet tensorflow numpy
+        exec python3 -u - "$@"
+      - |
+        import numpy as np
+        import tensorflow as tf
+        import argparse
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--x_train', required=True)
+        parser.add_argument('--y_train', required=True)
+        parser.add_argument('--x_test', required=True)
+        parser.add_argument('--y_test', required=True)
+        parser.add_argument('--train_dataset', required=True)
+        parser.add_argument('--test_dataset', required=True)
+        args = parser.parse_args()
+
+        x_train = np.load(args.x_train)
+        y_train = np.load(args.y_train)
+        x_test = np.load(args.x_test)
+        y_test = np.load(args.y_test)
+
+        train_ds = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(60000)
+        test_ds = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(10000)
+
+        tf.data.experimental.save(train_ds, args.train_dataset)
+        tf.data.experimental.save(test_ds, args.test_dataset)
+
+    args:
+      - --x_train
+      - {inputPath: x_train}
+      - --y_train
+      - {inputPath: y_train}
+      - --x_test
+      - {inputPath: x_test}
+      - --y_test
+      - {inputPath: y_test}
+      - --train_dataset
+      - {outputPath: train_dataset}
+      - --test_dataset
+      - {outputPath: test_dataset}
