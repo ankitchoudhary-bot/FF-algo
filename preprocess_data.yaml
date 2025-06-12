@@ -79,7 +79,7 @@ implementation:
       - --y_test
       - {inputPath: y_test}
       - --Flatten_flag
-      - {inputPath: Flatten_flag}
+      - {inputValue: Flatten_flag}
       - --x_train_out
       - {outputPath: x_train}
       - --x_test_out
