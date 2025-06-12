@@ -6,15 +6,15 @@ inputs:
   - {name: y_train, type: Dataset}
   - {name: x_test, type: Dataset}
   - {name: y_test, type: Dataset}
-  - {name: Flatten_flag, type: Bool, default: true}
+  # - {name: Flatten_flag, type: Bool, default: true}
 
 outputs:
   - {name: x_train, type: Dataset}
   - {name: x_test, type: Dataset}
   - {name: y_train, type: Dataset}
   - {name: y_test, type: Dataset}
-  # - {name: train_dataset, type: Dataset}
-  # - {name: test_dataset, type: Dataset}
+  - {name: train_dataset, type: Dataset}
+  - {name: test_dataset, type: Dataset}
 
 implementation:
   container:
@@ -44,16 +44,16 @@ implementation:
         parser.add_argument('--Flatten_flag', required=True)
         args = parser.parse_args()
 
-        Flatten_flag = args.Flatten_flag.lower() == 'true'
+        # Flatten_flag = args.Flatten_flag.lower() == 'true'
 
         x_train = np.load(args.x_train).astype(np.float32) / 255.0
         x_test = np.load(args.x_test).astype(np.float32) / 255.0
         y_train = np.load(args.y_train).astype(np.int32)
         y_test = np.load(args.y_test).astype(np.int32)
 
-        if Flatten_flag:
-          x_train=x_train.reshape((x_train.shape[0],-1))
-          x_test=x_test.reshape((x_test.shape[0],-1))
+        # if Flatten_flag:
+        #   x_train=x_train.reshape((x_train.shape[0],-1))
+        #   x_test=x_test.reshape((x_test.shape[0],-1))
 
         # Save preprocessed arrays
         np.save(args.x_train_out, x_train)
@@ -78,8 +78,8 @@ implementation:
       - {inputPath: x_test}
       - --y_test
       - {inputPath: y_test}
-      - --Flatten_flag
-      - {inputValue: Flatten_flag}
+      # - --Flatten_flag
+      # - {inputValue: Flatten_flag}
       - --x_train_out
       - {outputPath: x_train}
       - --x_test_out
@@ -88,7 +88,7 @@ implementation:
       - {outputPath: y_train}
       - --y_test_out
       - {outputPath: y_test}
-      # - --train_dataset
-      # - {outputPath: train_dataset}
-      # - --test_dataset
-      # - {outputPath: test_dataset}
+      - --train_dataset
+      - {outputPath: train_dataset}
+      - --test_dataset
+      - {outputPath: test_dataset}
