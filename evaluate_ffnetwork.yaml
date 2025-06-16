@@ -56,7 +56,7 @@ implementation:
 
         # Train again to extract loss history
         epochs = 60
-        history = model.fit(x_test, y_test, epochs=epochs)
+        history = model.fit(train_dataset, epochs=epochs)
 
         # Predict
         preds = model.predict(ops.convert_to_tensor(x_test))
