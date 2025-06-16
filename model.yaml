@@ -1,0 +1,16 @@
+name: Define Model Artifact
+description: Declares a model output artifact for use in downstream steps.
+inputs: []
+outputs:
+  - {name: model, type: Model}
+implementation:
+  container:
+    image: alpine:3.18
+    command:
+      - sh
+      - -c
+      - |
+        echo "This is a placeholder for a model artifact." > model
+
+
+              
