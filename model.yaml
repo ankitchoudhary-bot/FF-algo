@@ -10,22 +10,39 @@ implementation:
       - sh
       - -c
       - |
-        pip install --quiet tensorflow
-        python3 -c "
-import tensorflow as tf
+        pip install --quiet tensorflow || pip install --quiet tensorflow --user
+        exec "$0" "$@"
+      - python3
+      - -u
+      - -c
+      - |
+        import tensorflow as tf
+        import os
+        import argparse
 
-model = tf.keras.Sequential([
-    tf.keras.layers.Input(shape=(784,)),  # Example input shape (e.g., MNIST)
-    tf.keras.layers.Dense(128, activation='relu'),
-    tf.keras.layers.Dense(64, activation='relu'),
-    tf.keras.layers.Dense(10, activation='softmax')  # Output for 10 classes
-])
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--model", type=str, required=True)
+        args = parser.parse_args()
 
-model.compile(optimizer='adam',
-              loss='sparse_categorical_crossentropy',
-              metrics=['accuracy'])
+        model = tf.keras.Sequential([
+            tf.keras.layers.Input(shape=(784,)),
+            tf.keras.layers.Dense(128, activation='relu'),
+            tf.keras.layers.Dense(64, activation='relu'),
+            tf.keras.layers.Dense(10, activation='softmax')
+        ])
 
-model.save('model')
+        model.compile(
+            optimizer='adam',
+            loss='sparse_categorical_crossentropy',
+            metrics=['accuracy']
+        )
+
+        os.makedirs(os.path.dirname(args.model), exist_ok=True)
+        model.save(args.model)
+    args:
+      - --model
+      - {outputPath: model}
+
 "
 
 
