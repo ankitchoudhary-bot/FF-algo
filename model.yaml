@@ -1,5 +1,5 @@
-name: Define Model Artifact
-description: Declares a model output artifact for use in downstream steps.
+name: Define Feedforward Model
+description: Outputs a compiled feedforward Keras model to be used by downstream components.
 inputs: []
 outputs:
   - {name: model, type: Model}
@@ -10,7 +10,24 @@ implementation:
       - sh
       - -c
       - |
-        echo "This is a placeholder for a model artifact." > model
+        pip install --quiet tensorflow
+        python3 -c "
+import tensorflow as tf
+
+model = tf.keras.Sequential([
+    tf.keras.layers.Input(shape=(784,)),  # Example input shape (e.g., MNIST)
+    tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.Dense(64, activation='relu'),
+    tf.keras.layers.Dense(10, activation='softmax')  # Output for 10 classes
+])
+
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
+
+model.save('model')
+"
+
 
 
               
