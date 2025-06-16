@@ -39,9 +39,9 @@ implementation:
         parser.add_argument('--x_test_out', required=True)
         parser.add_argument('--y_train_out', required=True)
         parser.add_argument('--y_test_out', required=True)
-        # parser.add_argument('--train_dataset', required=True)
-        # parser.add_argument('--test_dataset', required=True)
-        parser.add_argument('--Flatten_flag', required=True)
+        parser.add_argument('--train_dataset', required=True)
+        parser.add_argument('--test_dataset', required=True)
+        # parser.add_argument('--Flatten_flag', required=True)
         args = parser.parse_args()
 
         # Flatten_flag = args.Flatten_flag.lower() == 'true'
@@ -62,12 +62,12 @@ implementation:
         np.save(args.y_test_out, y_test)
 
         # Convert to TensorFlow datasets
-        # train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(60000)
-        # test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(10000)
+        train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(60000)
+        test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(10000)
 
-        # Save datasets as .npz (TF dataset can't be saved directly; this is a common workaround)
-        # tf.data.experimental.save(train_dataset, args.train_dataset)
-        # tf.data.experimental.save(test_dataset, args.test_dataset)
+        # Save datasets as .npz
+        tf.data.experimental.save(train_dataset, args.train_dataset)
+        tf.data.experimental.save(test_dataset, args.test_dataset)
 
     args:
       - --x_train
